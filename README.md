@@ -47,9 +47,10 @@ Takes effect on next session (restart gateway + dashboard on cloud).
 ## Verify
 
 ```bash
-hermes plugins doctor "web/jina"   # path key utk layout kategori lokal.
-# NB: `plugins list` menampilkan ID "web-jina" (nama manifest) —
-# ID itu TIDAK berlaku untuk doctor; doctor mau path key.
+hermes plugins doctor "web/jina"   # macOS/Linux, layout kategori lokal
+hermes plugins doctor web-jina     # Windows (pakai ID manifest)
+# NB: `plugins list` menampilkan ID manifest ("web-jina") —
+# di macOS/Linux doctor mau path key ("web/jina"); di Windows sebaliknya.
 ```
 
 ## Troubleshooting
