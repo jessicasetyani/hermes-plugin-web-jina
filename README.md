@@ -47,8 +47,9 @@ Takes effect on next session (restart gateway + dashboard on cloud).
 ## Verify
 
 ```bash
-hermes plugins list | grep -i jina   # catat KEY yang tertera (tergantung jalur install)
-hermes plugins doctor <KEY>          # mis. "web/jina" utk layout kategori lokal
+hermes plugins doctor "web/jina"   # path key utk layout kategori lokal.
+# NB: `plugins list` menampilkan ID "web-jina" (nama manifest) —
+# ID itu TIDAK berlaku untuk doctor; doctor mau path key.
 ```
 
 ## Troubleshooting
