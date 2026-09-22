@@ -1,0 +1,6 @@
+name: base-web-jina
+description: "Fleet pin for the Jina Search + Reader backend (web-jina 1.0.0, fallback to web-you)."
+version: 1.0.0
+plugins:
+  - repo: https://github.com/jessicasetyani/hermes-plugin-web-jina.git
+    ref: 51878d3a3d84234744a453006f5e5d0a5ec3076e
