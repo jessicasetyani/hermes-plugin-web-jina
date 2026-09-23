@@ -147,9 +147,9 @@ class JinaProvider(WebSearchProvider):
             "badge": "paid",
             "tag": "Jina Search + Reader. Requires JINA_API_KEY.",
             "env_vars": [
-                {"name": "JINA_API_KEY", "label": "Jina API key", "url": _KEY_DOC_URL},
-                {"name": "JINA_SEARCH_BASE_URL", "label": "Search base override (optional)", "url": _KEY_DOC_URL},
-                {"name": "JINA_READER_BASE_URL", "label": "Reader base override (optional)", "url": _KEY_DOC_URL},
+                {"key": "JINA_API_KEY", "prompt": "Jina API key", "url": _KEY_DOC_URL},
+                {"key": "JINA_SEARCH_BASE_URL", "prompt": "Search base override (optional)", "url": _KEY_DOC_URL},
+                {"key": "JINA_READER_BASE_URL", "prompt": "Reader base override (optional)", "url": _KEY_DOC_URL},
             ],
             "docs_url": _KEY_DOC_URL,
         }
