@@ -2,7 +2,7 @@
 
 Official usage (https://jina.ai/reader; entry docs https://s.jina.ai/docs
 and https://r.jina.ai/docs):
-  search : GET {search_base}/?q={query}&num={n}  (Accept: application/json)
+  search : GET {search_base}/search?q={query}&num={n}  (Accept: application/json)
            -> {code, status, data: [{title, url, description, content, usage}], meta}
   reader : GET {reader_base}/{url}  (Authorization: Bearer key) -> markdown text
 
@@ -76,7 +76,7 @@ class JinaProvider(WebSearchProvider):
         if not api_key:
             return {"success": False, "error": _missing_key_error()}
         count = max(1, min(int(limit or 5), _SEARCH_CAP))
-        url = f"{_search_base()}/"
+        url = f"{_search_base()}/search"
         try:
             resp = httpx.get(
                 url,
