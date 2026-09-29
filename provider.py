@@ -18,6 +18,24 @@ thin-guard (<500 chars = honest error, never silent-thin) + 1x retry on 429.
 Known Jina traits: search is slow (median ~4s, tail 26s) and returns full
 page content per hit (~200KB/10 hits) — the envelope carries `description`
 only; `content` is NOT forwarded to keep token cost down.
+
+Reader best-practice options (https://jina.ai/reader) are opt-in via
+`extract(urls, **kwargs)` — defaults stay minimal (balanced cost/latency).
+Supported kwargs (all optional, unknown kwargs ignored per ABC contract):
+  target_selector  -> X-Target-Selector (e.g. "article, .main-content")
+  wait_for_selector -> X-Wait-For-Selector (JS-heavy pages)
+  remove_selector  -> X-Remove-Selector (e.g. "nav, footer, .sidebar")
+  timeout          -> X-Timeout (server-side seconds; httpx gets +30s buffer)
+  token_budget     -> X-Token-Budget (guardrail, request fails if exceeded)
+  no_cache         -> X-No-Cache: true (bypass cache; default uses cache)
+  cache_tolerance  -> X-Cache-Tolerance (seconds; 0 = fresh)
+  locale           -> X-Locale (e.g. "id" — do NOT default, generic backend)
+  engine           -> X-Engine (default/quality — leave default normally)
+  user_agent       -> X-User-Agent | referer -> X-Referer
+  retain_images    -> False sends X-Retain-Images: none (hemat token)
+  with_links_summary / with_images_summary -> X-With-Links-Summary/-Images
+  respond_with     -> X-Respond-With (e.g. "jina-ocr-v1" — 40x token, pakai
+                     hanya untuk dokumen kompleks; biaya tinggi)
 """
 
 from __future__ import annotations
@@ -53,6 +71,56 @@ def _api_key() -> str:
 
 def _missing_key_error() -> str:
     return "JINA_API_KEY is not set (BWS secret or ~/.hermes/.env)"
+
+
+# --- reader kwargs -> Jina headers (best-practice opt-in, defaults minimal) ---
+
+_READER_KWARG_HEADERS = {
+    "target_selector": "X-Target-Selector",
+    "wait_for_selector": "X-Wait-For-Selector",
+    "remove_selector": "X-Remove-Selector",
+    "timeout": "X-Timeout",
+    "token_budget": "X-Token-Budget",
+    "cache_tolerance": "X-Cache-Tolerance",
+    "locale": "X-Locale",
+    "engine": "X-Engine",
+    "user_agent": "X-User-Agent",
+    "referer": "X-Referer",
+    "respond_with": "X-Respond-With",
+    "with_links_summary": "X-With-Links-Summary",
+    "with_images_summary": "X-With-Images-Summary",
+}
+
+
+def _reader_headers(api_key: str, kwargs: Dict[str, Any]) -> Dict[str, str]:
+    """Build Reader headers: auth + opt-in best-practice headers.
+
+    Unknown kwargs are ignored (ABC contract). Explicit `X-...` keys in
+    kwargs pass through verbatim. `retain_images=False` -> strip images;
+    `no_cache=True` -> bypass cache.
+    """
+    headers: Dict[str, str] = {"Authorization": f"Bearer {api_key}"}
+    for kw, header in _READER_KWARG_HEADERS.items():
+        if kw in kwargs and kwargs[kw] not in (None, ""):
+            headers[header] = str(kwargs[kw])
+    for k, v in kwargs.items():
+        if k.startswith("X-") and v not in (None, ""):
+            headers[k] = str(v)
+    if kwargs.get("no_cache") is True:
+        headers["X-No-Cache"] = "true"
+    if kwargs.get("retain_images") is False:
+        headers["X-Retain-Images"] = "none"
+    return headers
+
+
+def _reader_http_timeout(kwargs: Dict[str, Any], default: int = 90) -> int:
+    try:
+        server_timeout = int(str(kwargs.get("timeout", "") or "0"))
+    except (TypeError, ValueError):
+        server_timeout = 0
+    if server_timeout > 0:
+        return server_timeout + 30  # buffer di atas server-side timeout
+    return default
 
 
 class JinaProvider(WebSearchProvider):
@@ -105,20 +173,22 @@ class JinaProvider(WebSearchProvider):
         api_key = _api_key()
         if not api_key:
             return [{"url": u, "title": "", "content": "", "error": _missing_key_error()} for u in urls]
+        headers = _reader_headers(api_key, kwargs)
+        http_timeout = _reader_http_timeout(kwargs)
         docs: List[Dict[str, Any]] = []
         for u in urls:
             try:
                 resp = httpx.get(
                     f"{_reader_base()}/{u}",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    timeout=90,
+                    headers=headers,
+                    timeout=http_timeout,
                 )
                 if resp.status_code == 429:
                     time.sleep(3)
                     resp = httpx.get(
                         f"{_reader_base()}/{u}",
-                        headers={"Authorization": f"Bearer {api_key}"},
-                        timeout=90,
+                        headers=headers,
+                        timeout=http_timeout,
                     )
                 if resp.status_code >= 400:
                     err = (resp.text or "").strip()[:300] or f"HTTP {resp.status_code}"
